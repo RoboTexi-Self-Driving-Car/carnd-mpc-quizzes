@@ -9,10 +9,10 @@ using CppAD::AD;
 using Eigen::VectorXd;
 
 /**
- * TODO: Set N and dt
+ * Done: Set N and dt
  */
-size_t N = ? ;
-double dt = ? ;
+size_t N = 10;
+double dt = 0.1;
 
 // This value assumes the model presented in the classroom is used.
 //
@@ -57,10 +57,28 @@ class FG_eval {
 
     // Reference State Cost
     /**
-     * TODO: Define the cost related the reference state and
+     * Done: Define the cost related the reference state and
      *   anything you think may be beneficial.
      */
 
+    // Reference state
+    for (int t = 0; t < N; ++t) {
+      fg[0] += CppAD::pow(vars[cte_start + t], 2);
+      fg[0] += CppAD::pow(vars[epsi_start + t], 2);
+      fg[0] += CppAD::pow(vars[v_start + t] - ref_v, 2);
+    }
+
+    // Minimize the use of actuators
+    for (int t = 0; t < N-1; ++t) {
+      fg[0] += CppAD::pow(vars[delta_start + t], 2);
+      fg[0] += CppAD::pow(vars[a_start + t], 2);
+    }
+
+    // Minimize the change of the actuators
+    for (int t = 0; t < N-2; ++t) {
+      fg[0] += CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      fg[0] += CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+    }
 
     //
     // Setup Constraints
@@ -82,14 +100,31 @@ class FG_eval {
     // The rest of the constraints
     for (int t = 1; t < N; ++t) {
       /**
-       * TODO: Grab the rest of the states at t+1 and t.
+       * Done: Grab the rest of the states at t+1 and t.
        *   We have given you parts of these states below.
        */
-      AD<double> x1 = vars[x_start + t];
-
       AD<double> x0 = vars[x_start + t - 1];
+      AD<double> y0 = vars[y_start + t - 1];
       AD<double> psi0 = vars[psi_start + t - 1];
       AD<double> v0 = vars[v_start + t - 1];
+      AD<double> cte0 = vars[cte_start + t - 1];
+      AD<double> epsi0 = vars[epsi_start + t - 1];
+
+      // Restore the control inputs
+      AD<double> delta0 = vars[delta_start + t - 1];
+      AD<double> a0 = vars[a_start + t - 1];
+
+      // Desired state based on the polynomial
+      AD<double> y0_des = coeffs[0] + coeffs[1]*x0;
+      AD<double> psi0_des = CppAD::atan(coeffs[1]);
+
+      // Compute the next state with the global kinematic model
+      AD<double> x1 = vars[x_start + t];
+      AD<double> y1 = vars[y_start + t];
+      AD<double> psi1 = vars[psi_start + t];
+      AD<double> v1 = vars[v_start + t];
+      AD<double> cte1 = vars[cte_start + t];
+      AD<double> epsi1 = vars[epsi_start + t];
 
       // Here's `x` to get you started.
       // The idea here is to constraint this value to be 0.
@@ -98,11 +133,14 @@ class FG_eval {
       // CppAD can compute derivatives and pass these to the solver.
 
       /**
-       * TODO: Setup the rest of the model constraints
+       * Done: Setup the rest of the model constraints
        */
-
-      fg[1 + x_start + t] = x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
-
+      fg[1 + x_start + t] += x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
+      fg[1 + y_start + t] += y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
+      fg[1 + psi_start + t] += psi1 - (psi0 + v0 / Lf * delta0 * dt);
+      fg[1 + v_start + t] += v1 - (v0 + a0 * dt);
+      fg[1 + cte_start + t] += cte1 - ((y0_des - y0) + v0 * CppAD::sin(epsi0) * dt);
+      fg[1 + epsi_start + t] += epsi1 - ((epsi0 - psi0_des) + v0 / Lf * delta0 * dt);
     }
   }
 };
