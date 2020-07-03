@@ -22,16 +22,19 @@ int main() {
   /**
    * TODO: use `polyfit` to fit a third order polynomial to the (x, y)
    *   coordinates.
-   * Hint: call Eigen::VectorXd polyfit() and pass xvals, yvals, and the 
+   * Hint: call Eigen::VectorXd polyfit() and pass xvals, yvals, and the
    *   polynomial degree/order
    */
   // YOUR CODE HERE
+  auto coeffs = polyfit(xvals, yvals, 3);
 
+  std::cout << "Fitted y values:" << std::endl;
   for (double x = 0; x <= 20; ++x) {
     /**
      * TODO: use `polyeval` to evaluate the x values.
      */
-    std::cout << "YOUR CODE HERE" << std::endl; 
+    double y = polyeval(coeffs, x);
+    std::cout << y << std::endl;
   }
 
   // Expected output
